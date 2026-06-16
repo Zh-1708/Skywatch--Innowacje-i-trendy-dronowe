@@ -219,7 +219,7 @@ def call_gemini(user_message: str, api_key: str) -> str:
     log.info("Wysyłanie do Gemini API...")
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-lite",
         contents=user_message,
         config=genai_types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
