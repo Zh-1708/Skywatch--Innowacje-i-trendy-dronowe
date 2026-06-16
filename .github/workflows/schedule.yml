@@ -37,7 +37,7 @@ jobs:
 
       - name: Uruchom bota SKYWATCH
         env:
-          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY:     ${{ secrets.GROQ_API_KEY }}
           RESEND_API_KEY:   ${{ secrets.RESEND_API_KEY }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
           SENDER_EMAIL:     ${{ secrets.SENDER_EMAIL }}

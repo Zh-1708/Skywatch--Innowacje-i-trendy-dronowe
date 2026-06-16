@@ -4,14 +4,14 @@ SKYWATCH — Autonomiczny Bot Raportów Dronowych
 Uruchamiany automatycznie w każdy wtorek przez GitHub Actions.
 
 Stack (Zero-Cost):
-  - AI:    Google Gemini Flash (darmowy tier: 1M tokenów/miesiąc)
-  - Email: Resend.com          (darmowy tier: 3000 maili/miesiąc)
-  - Infra: GitHub Actions      (darmowy tier: 2000 min/miesiąc)
+  - AI:    Groq API / Llama 3.3 70B   (darmowy tier, brak limitu regionalnego)
+  - Email: Resend.com                  (darmowy tier: 3000 maili/miesiąc)
+  - Infra: GitHub Actions              (darmowy tier: 2000 min/miesiąc)
   - Fonts: DejaVuSans.ttf bundlowany w repo (licencja Apache 2.0)
 
 Przepływ:
   1. Pobierz artykuły z 9 kanałów RSS (ostatnie 7 dni)
-  2. Wyślij do Gemini Flash → uzyskaj zredagowany raport po polsku
+  2. Wyślij do Groq (Llama 3.3 70B) → uzyskaj zredagowany raport po polsku
   3. Zapisz Markdown do raporty/ (archiwum w repo)
   4. Wygeneruj PDF z polskimi znakami (fpdf2 + DejaVuSans.ttf)
   5. Wyślij PDF przez Resend.com API
@@ -29,8 +29,7 @@ from typing import Optional
 
 import feedparser
 import resend
-from google import genai
-from google.genai import types as genai_types
+from groq import Groq
 from dateutil import parser as date_parser
 from fpdf import FPDF
 
@@ -212,23 +211,23 @@ def _build_message(articles: list[dict], report_date: str) -> str:
     return "\n".join(lines)
 
 
-# ─── GEMINI API ───────────────────────────────────────────────────────────────
+# ─── GROQ API ────────────────────────────────────────────────────────────────
 
 
-def call_gemini(user_message: str, api_key: str) -> str:
-    log.info("Wysyłanie do Gemini API...")
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-lite",
-        contents=user_message,
-        config=genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=4096,
-            temperature=0.2,
-        ),
+def call_groq(user_message: str, api_key: str) -> str:
+    log.info("Wysyłanie do Groq API (Llama 3.3 70B)...")
+    client = Groq(api_key=api_key)
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": user_message},
+        ],
+        max_tokens=4096,
+        temperature=0.2,
     )
-    text = response.text
-    log.info("Odpowiedź Gemini: %d znaków", len(text))
+    text = completion.choices[0].message.content
+    log.info("Odpowiedź Groq: %d znaków", len(text))
     return text
 
 
@@ -386,7 +385,7 @@ def send_via_resend(
 
 
 def main() -> None:
-    gemini_key   = os.environ["GEMINI_API_KEY"]
+    groq_key     = os.environ["GROQ_API_KEY"]
     resend_key   = os.environ["RESEND_API_KEY"]
     recipients   = [e.strip() for e in os.environ["RECIPIENT_EMAILS"].split(",") if e.strip()]
     sender       = os.environ.get("SENDER_EMAIL", "SKYWATCH Bot <onboarding@resend.dev>")
@@ -402,8 +401,8 @@ def main() -> None:
     log.info("[2/4] Budowanie promptu...")
     user_msg = _build_message(articles, report_date)
 
-    log.info("[3/4] Generowanie raportu (Gemini Flash)...")
-    report_text = call_gemini(user_msg, gemini_key)
+    log.info("[3/4] Generowanie raportu (Groq / Llama 3.3 70B)...")
+    report_text = call_groq(user_msg, groq_key)
 
     # Zapis Markdown do archiwum
     REPORTS_DIR.mkdir(exist_ok=True)

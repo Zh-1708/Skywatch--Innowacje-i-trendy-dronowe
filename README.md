@@ -8,7 +8,7 @@ i wysyłający go e-mailem **w każdy wtorek rano** — w 100% automatycznie.
 | Warstwa | Technologia | Koszt |
 |---|---|---|
 | Harmonogram | GitHub Actions (cron) | Darmowy |
-| AI / analiza | Google Gemini Flash | Darmowy (1M tokenów/mies.) |
+| AI / analiza | Groq API (Llama 3.3 70B) | Darmowy (bez limitu regionalnego) |
 | Wysyłka e-mail | Resend.com API | Darmowy (3000 maili/mies.) |
 | PDF + polskie znaki | fpdf2 + DejaVuSans (bundlowany) | Darmowy |
 
@@ -16,14 +16,14 @@ i wysyłający go e-mailem **w każdy wtorek rano** — w 100% automatycznie.
 
 ## Konfiguracja — jednorazowo, ~15 minut
 
-### KROK 1 — Klucz Google Gemini API (darmowy)
+### KROK 1 — Klucz Groq API (darmowy, działa w Polsce/UE)
 
-1. Wejdź na **https://aistudio.google.com/app/apikey**
-2. Zaloguj się kontem Google
-3. Kliknij **Create API key**
-4. Skopiuj klucz (zaczyna się od `AIza...`)
+1. Wejdź na **https://console.groq.com**
+2. Zaloguj się lub utwórz darmowe konto
+3. Kliknij **API Keys** → **Create API Key**
+4. Skopiuj klucz (zaczyna się od `gsk_...`)
 
-> Darmowy tier: 1 milion tokenów / miesiąc. Raport tygodniowy zużywa ok. 5000 tokenów.
+> Darmowy tier: ok. 500 000 tokenów / dzień. Raport tygodniowy zużywa ok. 3000 tokenów.
 
 ---
 
@@ -50,7 +50,7 @@ W repozytorium: **Settings → Secrets and variables → Actions → New reposit
 
 | Nazwa sekretu | Wartość | Wymagany? |
 |---|---|---|
-| `GEMINI_API_KEY` | Klucz z Kroku 1 (`AIza...`) | **TAK** |
+| `GROQ_API_KEY` | Klucz z Kroku 1 (`gsk_...`) | **TAK** |
 | `RESEND_API_KEY` | Klucz z Kroku 2 (`re_...`) | **TAK** |
 | `RECIPIENT_EMAILS` | Adresy odbiorców (przecinkami) | **TAK** |
 | `SENDER_EMAIL` | Np. `SKYWATCH <onboarding@resend.dev>` | Opcjonalny* |
@@ -122,11 +122,11 @@ Większość portali ma RSS pod `/feed/`, `/rss/` lub `/feed.xml`.
 | Problem | Rozwiązanie |
 |---|---|
 | Mail nie dochodzi (SPAM) | Zweryfikuj własną domenę w Resend → lepsza dostarczalność |
-| `PERMISSION_DENIED` (Gemini) | Sprawdź `GEMINI_API_KEY` — musi być aktywny |
+| `AuthenticationError` (Groq) | Sprawdź `GROQ_API_KEY` w console.groq.com — musi zaczynać się od `gsk_` |
 | `invalid_api_key` (Resend) | Sprawdź `RESEND_API_KEY` w panelu resend.com |
 | `Brak pliku czcionki` | Upewnij się że folder `fonts/` jest w repo |
 | Raport pusty | Sprawdź logi Actions — może RSS nie zwróciły wyników |
 
 ---
 
-*SKYWATCH Bot — Zero-Cost Automation | GitHub Actions + Gemini Flash + Resend.com + fpdf2*
+*SKYWATCH Bot — Zero-Cost Automation | GitHub Actions + Groq (Llama 3.3 70B) + Resend.com + fpdf2*
