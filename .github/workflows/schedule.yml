@@ -1,21 +1,18 @@
 name: SKYWATCH — Weekly Drone Report
 
 # ─── HARMONOGRAM ─────────────────────────────────────────────────────────────
-# Uruchamia się automatycznie w każdy WTOREK o 07:00 UTC
-#   → 08:00 czasu polskiego zimą  (CET = UTC+1)
-#   → 09:00 czasu polskiego latem (CEST = UTC+2)
-# Można też uruchomić ręcznie przez zakładkę Actions → "Run workflow"
+# Automatycznie co WTOREK o 07:00 UTC:
+#   → 08:00 rano (czas polski zimowy CET  = UTC+1)
+#   → 09:00 rano (czas polski letni  CEST = UTC+2)
+# Można też uruchomić ręcznie: Actions → Run workflow
 
 on:
   schedule:
     - cron: "0 7 * * 2"
-  workflow_dispatch:          # Ręczne uruchomienie (do testów)
-
-# ─── UPRAWNIENIA ─────────────────────────────────────────────────────────────
-# Zapis do repo potrzebny do commitowania pliku Markdown z raportem
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write        # potrzebne do commitu raportu Markdown
 
 jobs:
   send-report:
@@ -23,40 +20,30 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      # 1. Pobierz zawartość repozytorium
       - name: Checkout repozytorium
         uses: actions/checkout@v4
 
-      # 2. Zainstaluj czcionkę DejaVu (obsługa polskich znaków w PDF)
-      - name: Zainstaluj czcionki DejaVu
-        run: sudo apt-get install -y -q fonts-dejavu-core
-
-      # 3. Skonfiguruj Python 3.12
       - name: Konfiguracja Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
 
-      # 4. Zainstaluj zależności Python
       - name: Instalacja zależności Python
         run: pip install -r requirements.txt
 
-      # 5. Uruchom bota SKYWATCH
       - name: Uruchom bota SKYWATCH
         env:
-          CLAUDE_API_KEY:     ${{ secrets.CLAUDE_API_KEY }}
-          SENDER_EMAIL:       ${{ secrets.SENDER_EMAIL }}
-          EMAIL_PASSWORD:     ${{ secrets.EMAIL_PASSWORD }}
-          RECIPIENT_EMAILS:   ${{ secrets.RECIPIENT_EMAILS }}
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY:   ${{ secrets.RESEND_API_KEY }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          SENDER_EMAIL:     ${{ secrets.SENDER_EMAIL }}
         run: python report_bot.py
 
-      # 6. Zapisz raport Markdown do archiwum w repozytorium
-      - name: Zapisz raport do archiwum repozytorium
+      - name: Zapisz raport Markdown do archiwum
         run: |
           git config user.name  "SKYWATCH Bot"
           git config user.email "actions@github.com"
           git add raporty/
-          # Commituj tylko jeśli są zmiany (operator || true zapobiega błędowi gdy nic nowego)
           git diff --staged --quiet || git commit -m "Auto: Raport SKYWATCH $(date +%Y-%m-%d)"
           git push

@@ -1,159 +1,132 @@
 # SKYWATCH — Innowacje i Trendy Dronowe
 
 Autonomiczny bot generujący tygodniowy raport PDF z branży dronowej
-i wysyłający go e-mailem w każdy wtorek rano.
+i wysyłający go e-mailem **w każdy wtorek rano** — w 100% automatycznie.
+
+## Stack (Zero-Cost)
+
+| Warstwa | Technologia | Koszt |
+|---|---|---|
+| Harmonogram | GitHub Actions (cron) | Darmowy |
+| AI / analiza | Google Gemini Flash | Darmowy (1M tokenów/mies.) |
+| Wysyłka e-mail | Resend.com API | Darmowy (3000 maili/mies.) |
+| PDF + polskie znaki | fpdf2 + DejaVuSans (bundlowany) | Darmowy |
 
 ---
 
-## Jak to działa?
+## Konfiguracja — jednorazowo, ~15 minut
 
+### KROK 1 — Klucz Google Gemini API (darmowy)
+
+1. Wejdź na **https://aistudio.google.com/app/apikey**
+2. Zaloguj się kontem Google
+3. Kliknij **Create API key**
+4. Skopiuj klucz (zaczyna się od `AIza...`)
+
+> Darmowy tier: 1 milion tokenów / miesiąc. Raport tygodniowy zużywa ok. 5000 tokenów.
+
+---
+
+### KROK 2 — Klucz Resend.com API (darmowy)
+
+Resend to profesjonalna platforma e-mail — nie ląduje w spamie jak Gmail SMTP.
+
+1. Wejdź na **https://resend.com** i utwórz darmowe konto
+2. Po zalogowaniu kliknij **API Keys** → **Create API Key**
+3. Skopiuj klucz (zaczyna się od `re_...`)
+
+> Darmowy tier: 3000 maili / miesiąc, 100 / dzień. Bot wysyła 4-5 maili miesięcznie.
+
+**Ważne — adres nadawcy:**
+Na darmowym koncie Resend możesz wysyłać z adresu `onboarding@resend.dev`
+(działa od razu, bez konfiguracji). Jeśli chcesz własny adres (np. `bot@twojafirma.pl`),
+musisz zweryfikować domenę w panelu Resend — jest to darmowe, ale wymaga dostępu do DNS.
+
+---
+
+### KROK 3 — GitHub Secrets
+
+W repozytorium: **Settings → Secrets and variables → Actions → New repository secret**
+
+| Nazwa sekretu | Wartość | Wymagany? |
+|---|---|---|
+| `GEMINI_API_KEY` | Klucz z Kroku 1 (`AIza...`) | **TAK** |
+| `RESEND_API_KEY` | Klucz z Kroku 2 (`re_...`) | **TAK** |
+| `RECIPIENT_EMAILS` | Adresy odbiorców (przecinkami) | **TAK** |
+| `SENDER_EMAIL` | Np. `SKYWATCH <onboarding@resend.dev>` | Opcjonalny* |
+
+*Jeśli `SENDER_EMAIL` nie jest ustawiony, bot używa `onboarding@resend.dev` automatycznie.
+
+**Przykład `RECIPIENT_EMAILS`:**
 ```
-[RSS: swiatdronow.pl, dlapilota.pl, dronedj.com ...]
-            ↓  (feedparser — ostatnie 7 dni)
-    [Python: report_bot.py]
-            ↓  (Anthropic Claude API)
-    [Raport zredagowany po polsku]
-            ↓  (fpdf2 — PDF z polskimi znakami)
-    [PDF jako załącznik e-mail]  →  odbiorca@firma.pl
-            ↓
-    [Markdown → commit do repo jako archiwum]
+anna@firma.pl,jan@firma.pl,zosia.hoppel@gmail.com
 ```
-
-Całość uruchamia się automatycznie przez **GitHub Actions** (cron) — bezobsługowo, bezpłatnie.
-
----
-
-## Konfiguracja jednorazowa (~20 minut)
-
-### KROK 1 — Klucz API Anthropic (Claude)
-
-1. Wejdź na **https://console.anthropic.com**
-2. Utwórz konto i zaloguj się
-3. Kliknij **API Keys** → **Create Key** → nadaj nazwę np. `skywatch-bot`
-4. Skopiuj klucz (zaczyna się od `sk-ant-...`) — zapisz go bezpiecznie
-
-> **Koszt:** Nowe konta Anthropic otrzymują darmowe kredyty. Każdy tygodniowy
-> raport kosztuje ok. **$0.01–0.05** (zależnie od liczby artykułów).
-> Miesięcznie: mniej niż $0.20.
-
----
-
-### KROK 2 — Hasło do aplikacji Gmail (App Password)
-
-Zwykłe hasło do Gmaila nie działa z SMTP. Musisz wygenerować specjalne
-„Hasło do aplikacji":
-
-1. Zaloguj się na konto Gmail, które będzie wysyłać raporty
-2. Wejdź na **https://myaccount.google.com/security**
-3. Upewnij się, że masz włączoną **Weryfikację dwuetapową** (2FA) — bez niej opcja nie jest dostępna
-4. W wyszukiwarce ustawień wpisz **„Hasła do aplikacji"** i kliknij wynik
-   - Alternatywna ścieżka: Bezpieczeństwo → Weryfikacja dwuetapowa → (przewiń na dół) → Hasła do aplikacji
-5. W polu **Aplikacja** wpisz: `SKYWATCH Bot`
-6. Kliknij **Utwórz**
-7. Gmail wygeneruje **16-znakowe hasło** (np. `abcd efgh ijkl mnop`) — skopiuj je (spacje nie mają znaczenia)
-
-> To hasło wkleisz jako sekret `EMAIL_PASSWORD` w następnym kroku.
-
----
-
-### KROK 3 — Skonfiguruj GitHub Secrets
-
-Tajne zmienne są przechowywane bezpiecznie w GitHubie i nigdy nie trafiają do kodu.
-
-1. Wejdź na stronę tego repozytorium na GitHub
-2. Kliknij zakładkę **Settings** (Ustawienia)
-3. W lewym menu: **Secrets and variables** → **Actions**
-4. Kliknij **New repository secret** i dodaj kolejno cztery sekrety:
-
-| Nazwa sekretu      | Wartość                                      | Przykład                         |
-|--------------------|----------------------------------------------|----------------------------------|
-| `CLAUDE_API_KEY`   | Klucz API Anthropic z Kroku 1               | `sk-ant-api03-...`               |
-| `SENDER_EMAIL`     | Adres Gmail wysyłającego                     | `skywatch.bot@gmail.com`         |
-| `EMAIL_PASSWORD`   | 16-znakowe hasło z Kroku 2                  | `abcdefghijklmnop`               |
-| `RECIPIENT_EMAILS` | Adresy odbiorców (przecinkami)              | `anna@firma.pl,jan@firma.pl`     |
 
 ---
 
 ### KROK 4 — Aktywuj GitHub Actions
 
-1. W repozytorium kliknij zakładkę **Actions**
-2. Jeśli widzisz komunikat *„Workflows aren't being run on this forked repository"*,
-   kliknij **I understand my workflows, go ahead and enable them**
-3. Gotowe! Bot uruchomi się automatycznie **w najbliższy wtorek o godz. 8:00–9:00 rano** (czas polski)
+1. Kliknij zakładkę **Actions** w repozytorium
+2. Jeśli widzisz ostrzeżenie — kliknij **Enable workflows**
+3. Gotowe! Bot uruchomi się **automatycznie w najbliższy wtorek**
 
 ---
 
-## Jak przetestować ręcznie?
+## Test natychmiastowy
 
-Nie czekaj do wtorku — uruchom bota natychmiast:
+Nie czekaj do wtorku:
 
-1. W repozytorium kliknij zakładkę **Actions**
-2. Wybierz workflow **SKYWATCH — Weekly Drone Report**
-3. Kliknij **Run workflow** → **Run workflow** (zielony przycisk)
-4. Odśwież stronę i obserwuj postęp — zajmuje ok. 1–2 minuty
-5. Po zakończeniu sprawdź skrzynkę mailową odbiorcy
+1. Zakładka **Actions** → **SKYWATCH — Weekly Drone Report**
+2. **Run workflow** → **Run workflow**
+3. Obserwuj logi — zajmuje ok. 60-90 sekund
+4. Sprawdź skrzynkę mailową
 
 ---
 
-## Pliki w repozytorium
+## Struktura plików
 
 ```
-├── report_bot.py                        # Główny skrypt bota
-├── requirements.txt                     # Zależności Python
+├── report_bot.py                    # Główny skrypt bota
+├── requirements.txt                 # Zależności Python
+├── fonts/
+│   ├── DejaVuSans.ttf               # Czcionka (Apache 2.0) — bundlowana w repo
+│   └── DejaVuSans-Bold.ttf
 ├── .github/
 │   └── workflows/
-│       └── schedule.yml                 # Harmonogram GitHub Actions (cron)
-└── raporty/                             # Archiwum raportów (Markdown)
-    ├── raport-tygodniowy-2026-06-16.md  (ręcznie tworzony przykład)
-    └── SKYWATCH_Raport_2026-06-23.md    (generowane automatycznie przez bota)
+│       └── schedule.yml             # Cron: co wtorek 07:00 UTC
+└── raporty/                         # Archiwum (commitowane automatycznie)
+    ├── raport-tygodniowy-2026-06-16.md
+    └── SKYWATCH_Raport_YYYY-MM-DD.md
 ```
 
 ---
 
-## Dodawanie/usuwanie źródeł RSS
+## Dodawanie źródeł RSS
 
-Otwórz plik `report_bot.py` i znajdź sekcję `RSS_SOURCES`:
+W `report_bot.py`, sekcja `RSS_SOURCES`:
 
 ```python
 RSS_SOURCES = [
-    {"name": "Świat Dronów",  "url": "https://www.swiatdronow.pl/feed/"},
-    # Dodaj nowe wpisy w tym formacie:
-    {"name": "Nazwa Portalu", "url": "https://portal.pl/feed/"},
+    {"name": "Świat Dronów", "url": "https://www.swiatdronow.pl/feed/"},
+    # Dodaj nowe źródła tutaj:
+    {"name": "Mój Portal", "url": "https://mojportal.pl/feed/"},
 ]
 ```
 
-Większość portali udostępnia RSS pod adresem `/feed/`, `/rss/` lub `/feed.xml`.
-
----
-
-## Zmiana harmonogramu
-
-Edytuj plik `.github/workflows/schedule.yml`, linia:
-
-```yaml
-- cron: "0 7 * * 2"
-```
-
-Format: `minuta godzina(UTC) dzień miesiąc dzień_tygodnia`
-
-| Zapis cron     | Znaczenie                                    |
-|----------------|----------------------------------------------|
-| `0 7 * * 2`    | Wtorek, 7:00 UTC (8:00 CET / 9:00 CEST)    |
-| `0 7 * * 1`    | Poniedziałek, 7:00 UTC                       |
-| `0 6 * * 1,4`  | Poniedziałek i czwartek, 6:00 UTC            |
+Większość portali ma RSS pod `/feed/`, `/rss/` lub `/feed.xml`.
 
 ---
 
 ## Rozwiązywanie problemów
 
-| Problem                           | Rozwiązanie                                                    |
-|-----------------------------------|----------------------------------------------------------------|
-| Mail nie dochodzi                 | Sprawdź folder SPAM; upewnij się że Email Password jest poprawne |
-| `RuntimeError: Brak czcionki`    | Workflow musi zawierać krok `apt-get install fonts-dejavu-core` |
-| `AuthenticationError` (Claude)    | Sprawdź klucz `CLAUDE_API_KEY` — czy konto ma kredyty?       |
-| `SMTPAuthenticationError`         | Wygeneruj nowe hasło aplikacji Gmail (stare wygasają)         |
-| Raport pusty / brak newsów        | Sprawdź logi Actions — być może RSS nie zwróciły wyników      |
+| Problem | Rozwiązanie |
+|---|---|
+| Mail nie dochodzi (SPAM) | Zweryfikuj własną domenę w Resend → lepsza dostarczalność |
+| `PERMISSION_DENIED` (Gemini) | Sprawdź `GEMINI_API_KEY` — musi być aktywny |
+| `invalid_api_key` (Resend) | Sprawdź `RESEND_API_KEY` w panelu resend.com |
+| `Brak pliku czcionki` | Upewnij się że folder `fonts/` jest w repo |
+| Raport pusty | Sprawdź logi Actions — może RSS nie zwróciły wyników |
 
 ---
 
-*Bot SKYWATCH — Zero-Cost Automation Stack | GitHub Actions + Anthropic Claude + fpdf2*
+*SKYWATCH Bot — Zero-Cost Automation | GitHub Actions + Gemini Flash + Resend.com + fpdf2*
