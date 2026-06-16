@@ -186,7 +186,7 @@ def fetch_articles(days_back: int = 7) -> list[dict]:
                     "date":   pub.strftime("%Y-%m-%d"),
                     "title":  _clean(getattr(entry, "title", "")),
                     "url":    url,
-                    "desc":   _clean(getattr(entry, "summary", ""))[:600],
+                    "desc":   _clean(getattr(entry, "summary", ""))[:250],
                 })
                 count += 1
 
@@ -201,6 +201,8 @@ def fetch_articles(days_back: int = 7) -> list[dict]:
 def _build_message(articles: list[dict], report_date: str) -> str:
     if not articles:
         return f"Data raportu: {report_date}\n\nBrak artykułów w tym tygodniu."
+    # Limit 30 artykułów — Groq free tier: 12 000 TPM
+    articles = sorted(articles, key=lambda a: a["date"], reverse=True)[:30]
     lines = [f"Data raportu: {report_date}\n", f"Zebrano {len(articles)} artykułów:\n"]
     for i, a in enumerate(articles, 1):
         lines.append(
