@@ -28,8 +28,9 @@ from pathlib import Path
 from typing import Optional
 
 import feedparser
-import google.generativeai as genai
 import resend
+from google import genai
+from google.genai import types as genai_types
 from dateutil import parser as date_parser
 from fpdf import FPDF
 
@@ -216,16 +217,16 @@ def _build_message(articles: list[dict], report_date: str) -> str:
 
 def call_gemini(user_message: str, api_key: str) -> str:
     log.info("Wysyłanie do Gemini API...")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=SYSTEM_PROMPT,
-        generation_config=genai.GenerationConfig(
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=user_message,
+        config=genai_types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
             max_output_tokens=4096,
             temperature=0.2,
         ),
     )
-    response = model.generate_content(user_message)
     text = response.text
     log.info("Odpowiedź Gemini: %d znaków", len(text))
     return text
