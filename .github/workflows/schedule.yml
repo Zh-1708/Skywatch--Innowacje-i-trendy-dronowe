@@ -1,0 +1,49 @@
+name: SKYWATCH — Weekly Drone Report
+
+# ─── HARMONOGRAM ─────────────────────────────────────────────────────────────
+# Automatycznie co WTOREK o 07:00 UTC:
+#   → 08:00 rano (czas polski zimowy CET  = UTC+1)
+#   → 09:00 rano (czas polski letni  CEST = UTC+2)
+# Można też uruchomić ręcznie: Actions → Run workflow
+
+on:
+  schedule:
+    - cron: "0 7 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write        # potrzebne do commitu raportu Markdown
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repozytorium
+        uses: actions/checkout@v4
+
+      - name: Konfiguracja Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalacja zależności Python
+        run: pip install -r requirements.txt
+
+      - name: Uruchom bota SKYWATCH
+        env:
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY:   ${{ secrets.RESEND_API_KEY }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          SENDER_EMAIL:     ${{ secrets.SENDER_EMAIL }}
+        run: python report_bot.py
+
+      - name: Zapisz raport Markdown do archiwum
+        run: |
+          git config user.name  "SKYWATCH Bot"
+          git config user.email "actions@github.com"
+          git add raporty/
+          git diff --staged --quiet || git commit -m "Auto: Raport SKYWATCH $(date +%Y-%m-%d)"
+          git push
